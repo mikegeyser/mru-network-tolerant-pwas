@@ -6,7 +6,7 @@ import "./App.css";
 import Selector from "./components/selector/Selector";
 import List from "./components/list/List";
 import New from "./components/new/New";
-import ConnectionToast from "./components/connection-toast/ConnectionToast";
+import Toast from "./components/toast/Toast";
 
 class App extends Component {
   state = {
@@ -31,7 +31,11 @@ class App extends Component {
       setTimeout(() => this.setState({ showToast: null }), 2000);
     }
 
-    this.setState({ online, showToast: "show" });
+    const message = online
+      ? "Yay, the application is online!"
+      : "Oh no, the app seems to be offline... ";
+
+    this.setState({ toastMessage: message, showToast: "show" });
   }
 
   fetchCategories() {
@@ -98,10 +102,7 @@ class App extends Component {
           />
         )}
 
-        <ConnectionToast
-          online={this.state.online}
-          show={this.state.showToast}
-        />
+        <Toast message={this.state.toastMessage} show={this.state.showToast} />
       </div>
     );
   }
