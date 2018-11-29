@@ -1,12 +1,12 @@
-import React, { Component } from 'react';
-import * as api from './Api';
+import React, { Component } from "react";
+import * as api from "./Api";
 
-import './App.css';
+import "./App.css";
 
-import Selector from './components/selector/Selector';
-import List from './components/list/List';
-import New from './components/new/New';
-import ConnectionToast from './components/connection-toast/ConnectionToast';
+import Selector from "./components/selector/Selector";
+import List from "./components/list/List";
+import New from "./components/new/New";
+import ConnectionToast from "./components/connection-toast/ConnectionToast";
 
 class App extends Component {
   state = {
@@ -21,21 +21,22 @@ class App extends Component {
   componentDidMount() {
     this.fetchCategories();
 
-    window.addEventListener('online', () => this.online(true));
-    window.addEventListener('offline', () => this.online(false));
+    window.addEventListener("online", () => this.online(true));
+    window.addEventListener("offline", () => this.online(false));
   }
 
   online(online) {
-    const showToast = (online !== this.state.online);
+    const showToast = online !== this.state.online;
     if (showToast) {
-      setTimeout(() => this.setState({ showToast: null }), 2000)
+      setTimeout(() => this.setState({ showToast: null }), 2000);
     }
 
-    this.setState({ online, showToast: 'show' });
+    this.setState({ online, showToast: "show" });
   }
 
   fetchCategories() {
-    api.fetchCategories()
+    api
+      .fetchCategories()
       .then(categories => this.setState({ categories }))
       .then(_ => this.fetchMemes(0));
   }
@@ -45,7 +46,8 @@ class App extends Component {
 
     let category = this.state.categories[selectedCategory];
 
-    return api.fetchMemes(category.key)
+    return api
+      .fetchMemes(category.key)
       .then(memes => this.setState({ selectedCategory, memes }));
   }
 
@@ -65,8 +67,9 @@ class App extends Component {
   }
 
   reloadMemes() {
-    this.fetchMemes(this.state.selectedCategory)
-      .then(_ => this.setState({ showNew: false }));
+    this.fetchMemes(this.state.selectedCategory).then(_ =>
+      this.setState({ showNew: false })
+    );
   }
 
   render() {
@@ -75,24 +78,30 @@ class App extends Component {
         <Selector
           categories={this.state.categories}
           selectedCategory={this.state.selectedCategory}
-          selectedCategoryChanged={(direction) => this.selectedCategoryChanged(direction)}>
-        </Selector>
+          selectedCategoryChanged={direction =>
+            this.selectedCategoryChanged(direction)
+          }
+        />
 
-        <button
-          className="new"
-          type="button"
-          onClick={_ => this.new()}>
+        <button className="new" type="button" onClick={_ => this.new()}>
           <i>+</i>
         </button>
 
-        {this.state.memes && !this.state.showNew && <List memes={this.state.memes}></List>}
+        {this.state.memes && !this.state.showNew && (
+          <List memes={this.state.memes} />
+        )}
 
-        {this.state.showNew &&
-          <New category={this.state.categories[this.state.selectedCategory].key}
-            reloadMemes={() => this.reloadMemes()}>
-          </New>}
+        {this.state.showNew && (
+          <New
+            category={this.state.categories[this.state.selectedCategory].key}
+            reloadMemes={() => this.reloadMemes()}
+          />
+        )}
 
-        <ConnectionToast online={this.state.online} show={this.state.showToast} />
+        <ConnectionToast
+          online={this.state.online}
+          show={this.state.showToast}
+        />
       </div>
     );
   }

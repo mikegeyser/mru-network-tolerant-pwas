@@ -1,6 +1,8 @@
 /* In case the conference wifi sucks :) */
-importScripts("workbox-v3.6.3/workbox-sw.js");
+importScripts("workbox-v3.6.3/workbox-sw.js", "idb/idb-keyval-iife.min.js");
+
 workbox.setConfig({ modulePathPrefix: "workbox-v3.6.3/", debug: true });
+// wat
 
 // Skip waiting.
 self.skipWaiting();
@@ -56,7 +58,7 @@ const queue = new workbox.backgroundSync.Queue("memes-to-be-saved", {
 
 self.addEventListener("fetch", event => {
   if (event.request.url.match(/.*memes/) && event.request.method === "POST") {
-    let response = fetch(event.request.clone()).catch(_ =>
+    let response = fetch(event.request.clone()).catch(() =>
       queueChange(event.request.clone())
     );
 
@@ -68,7 +70,6 @@ async function queueChange(request) {
   await queue.addRequest(request.clone());
 
   const meme = await request.clone().json();
-
   saveOfflineData(meme);
 
   return new Response("", { status: 200 });
@@ -94,82 +95,33 @@ const apiStrategy = async ({ event }) => {
 
 const combinedStrategy = workbox.streams.strategy([
   () => "[",
-  () => getOfflineData().then(data => unroll(data, ",")),
-  e =>
-    apiStrategy(e)
-      .then(response => response.json())
-      .then(data => unroll(data)),
+  async () => {
+    const data = await getOfflineData();
+    return stringify(data, ",");
+  },
+  async e => {
+    const response = await apiStrategy(e);
+    const data = await response.json();
+    return stringify(data);
+  },
   () => "]"
 ]);
 
 workbox.routing.registerRoute(/.*memes\/.\w+/, combinedStrategy, "GET");
 
-// helpers
-function iDb() {
-  return new Promise((resolve, reject) => {
-    let idb = indexedDB.open("offline-memes");
-
-    idb.onsuccess = e => resolve(e.target.result);
-
-    idb.onupgradeneeded = e => {
-      let db = e.target.result;
-      db.createObjectStore("memes", { keyPath: "id" });
-      resolve(db);
-    };
-
-    idb.onerror = e => reject(e);
-  });
-}
-
-function saveOfflineData(meme) {
-  iDb().then(db => {
-    let tx = db.transaction("memes", "readwrite");
-    let store = tx.objectStore("memes");
-
-    store.put(meme);
-  });
+// helpers.js
+async function saveOfflineData(meme) {
+  meme.offline = true;
+  let memes = (await idbKeyval.get("memes")) || [];
+  idbKeyval.set("memes", [...memes, meme]);
 }
 
 function getOfflineData() {
-  return new Promise(resolve => {
-    iDb().then(db => {
-      let memes = [];
-      db
-        .transaction("memes", "readwrite")
-        .objectStore("memes")
-        .openCursor().onsuccess = function(event) {
-        let cursor = event.target.result;
-        if (cursor) {
-          memes.push({ ...cursor.value, offline: true });
-          cursor.continue();
-        } else {
-          resolve(memes);
-        }
-      };
-    });
-  });
-}
-
-function unroll(data, suffix) {
-  if (!data.length) {
-    return "";
-  }
-
-  let result = data.map(item => JSON.stringify(item)).join(",");
-
-  if (suffix) {
-    result += suffix;
-  }
-
-  return result;
+  return idbKeyval.get("memes");
 }
 
 function clearStore() {
-  iDb().then(db => {
-    db.transaction("memes", "readwrite")
-      .objectStore("memes")
-      .clear();
-  });
+  return idbKeyval.del("memes");
 }
 
 async function clearCache() {
@@ -181,4 +133,18 @@ async function clearCache() {
       cache.delete(key);
     }
   }
+}
+
+function stringify(data, suffix) {
+  if (!data || !data.length) {
+    return "";
+  }
+
+  let result = data.map(item => JSON.stringify(item)).join(",");
+
+  if (suffix) {
+    result += suffix;
+  }
+
+  return result;
 }
