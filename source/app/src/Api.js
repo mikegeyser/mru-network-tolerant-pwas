@@ -15,13 +15,12 @@ export function fetchTemplates(category) {
 export function saveMeme(category, template, top, bottom) {
     const meme = {
         id: Math.random(),
-        category,
         template,
         top,
         bottom
     };
 
-    return fetch(`${api}/memes`, {
+    return fetch(`${api}/memes/${category}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(meme)

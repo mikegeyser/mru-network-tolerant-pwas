@@ -1,23 +1,37 @@
 import React, { Component } from 'react';
 import * as api from './Api';
 
+import './App.css';
+
 import Selector from './components/selector/Selector';
 import List from './components/list/List';
 import New from './components/new/New';
-import './App.css';
+import ConnectionToast from './components/connection-toast/ConnectionToast';
 
 class App extends Component {
   state = {
     categories: [],
     selectedCategory: 0,
     memes: [],
-    showNew: false
+    showNew: false,
+    online: true,
+    showToast: null
   };
 
-  constructor(props) {
-    super(props);
-
+  componentDidMount() {
     this.fetchCategories();
+
+    window.addEventListener('online', () => this.online(true));
+    window.addEventListener('offline', () => this.online(false));
+  }
+
+  online(online) {
+    const showToast = (online !== this.state.online);
+    if (showToast) {
+      setTimeout(() => this.setState({ showToast: null }), 2000)
+    }
+
+    this.setState({ online, showToast: 'show' });
   }
 
   fetchCategories() {
@@ -31,7 +45,7 @@ class App extends Component {
 
     let category = this.state.categories[selectedCategory];
 
-    api.fetchMemes(category.key)
+    return api.fetchMemes(category.key)
       .then(memes => this.setState({ selectedCategory, memes }));
   }
 
@@ -64,7 +78,12 @@ class App extends Component {
           selectedCategoryChanged={(direction) => this.selectedCategoryChanged(direction)}>
         </Selector>
 
-        <button className="new" type="button" onClick={_ => this.new()}><i>+</i></button>
+        <button
+          className="new"
+          type="button"
+          onClick={_ => this.new()}>
+          <i>+</i>
+        </button>
 
         {this.state.memes && !this.state.showNew && <List memes={this.state.memes}></List>}
 
@@ -72,6 +91,8 @@ class App extends Component {
           <New category={this.state.categories[this.state.selectedCategory].key}
             reloadMemes={() => this.reloadMemes()}>
           </New>}
+
+        <ConnectionToast online={this.state.online} show={this.state.showToast} />
       </div>
     );
   }

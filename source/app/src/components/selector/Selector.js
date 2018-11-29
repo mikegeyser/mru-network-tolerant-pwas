@@ -11,10 +11,7 @@ class Selector extends Component {
     }
 
     render() {
-        console.log(this.props);
-
         let currentCategory = this.props.categories[this.props.selectedCategory];
-        console.log(currentCategory);
 
         return (
             <div className="selector">

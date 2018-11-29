@@ -123,6 +123,15 @@ app.post('/memes', (req, res) => {
     res.send(200, {});
 });
 
+app.post('/memes/:category', (req, res) => {
+    const meme = {
+        ...req.body,
+        category: req.params.category
+    }
+    memes.unshift(meme);
+    res.send(200, {});
+});
+
 app.listen(3001, () => console.log('Running on port 3001.'));
 
 function absoluteTemplatePath(req, category, template) {

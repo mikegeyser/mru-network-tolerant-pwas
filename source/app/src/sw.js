@@ -1,35 +1,184 @@
+/* In case the conference wifi sucks :) */
 importScripts("workbox-v3.6.3/workbox-sw.js");
+workbox.setConfig({ modulePathPrefix: "workbox-v3.6.3/", debug: true });
 
-workbox.setConfig({ modulePathPrefix: 'workbox-v3.6.3/' })
+// Skip waiting.
+self.skipWaiting();
 
+// Precaching
 const precacheManifest = [];
-
 workbox.precaching.suppressWarnings();
 workbox.precaching.precacheAndRoute(precacheManifest);
 
+// Runtime routing
 const dataCacheConfig = {
-    cacheName: 'meme-data'
+  cacheName: "meme-data"
 };
 
-workbox.routing.registerRoute(/.*categories/, workbox.strategies.cacheFirst(dataCacheConfig), 'GET');
-workbox.routing.registerRoute(/.*templates/, workbox.strategies.cacheFirst(dataCacheConfig), 'GET');
-workbox.routing.registerRoute(/.*memes\/.\w+/, workbox.strategies.staleWhileRevalidate(dataCacheConfig), 'GET');
+workbox.routing.registerRoute(
+  /.*categories/,
+  workbox.strategies.cacheFirst(dataCacheConfig),
+  "GET"
+);
+workbox.routing.registerRoute(
+  /.*templates/,
+  workbox.strategies.cacheFirst(dataCacheConfig),
+  "GET"
+);
 
 workbox.routing.registerRoute(
-    /.*.(?:png|jpg|jpeg|svg)$/,
-    workbox.strategies.cacheFirst({
-        cacheName: 'meme-images'
-    }),
-    'GET');
+  /.*.(?:png|jpg|jpeg|svg)$/,
+  workbox.strategies.cacheFirst({
+    cacheName: "meme-images"
+  }),
+  "GET"
+);
 
-self.addEventListener('install', (event) => {
-    const channel = new BroadcastChannel('service-worker-channel');
-    channel.postMessage({ promptToReload: true });
-
-    channel.onmessage = (message) => {
-        if (message.data.skipWaiting) {
-            console.log('Skipping waiting and installing service worker.');
-            self.skipWaiting();
-        }
-    };
+// Exception handling
+workbox.routing.setCatchHandler(({ event }) => {
+  switch (event.request.destination) {
+    case "image":
+      return caches.match("/images/facepalm.jpg");
+    default:
+      return Response.error();
+  }
 });
+
+// Background Sync
+const queue = new workbox.backgroundSync.Queue("memes-to-be-saved", {
+  callbacks: {
+    queueDidReplay: () => {
+      clearStore();
+      clearCache();
+    }
+  }
+});
+
+self.addEventListener("fetch", event => {
+  if (event.request.url.match(/.*memes/) && event.request.method === "POST") {
+    let response = fetch(event.request.clone()).catch(_ =>
+      queueChange(event.request.clone())
+    );
+
+    event.respondWith(response);
+  }
+});
+
+async function queueChange(request) {
+  await queue.addRequest(request.clone());
+
+  const meme = await request.clone().json();
+
+  saveOfflineData(meme);
+
+  return new Response("", { status: 200 });
+}
+
+// Offline streams
+const apiStrategy = async ({ event }) => {
+  try {
+    return await workbox.strategies
+      .staleWhileRevalidate(dataCacheConfig)
+      .handle({ event });
+  } catch (error) {
+    const fake = {
+      id: 0,
+      top: "memes",
+      bottom: "not found",
+      template: "notfound.jpg"
+    };
+    const fakeResponse = new Response(JSON.stringify([fake]), { status: 200 });
+    return Promise.resolve(fakeResponse);
+  }
+};
+
+const combinedStrategy = workbox.streams.strategy([
+  () => "[",
+  () => getOfflineData().then(data => unroll(data, ",")),
+  e =>
+    apiStrategy(e)
+      .then(response => response.json())
+      .then(data => unroll(data)),
+  () => "]"
+]);
+
+workbox.routing.registerRoute(/.*memes\/.\w+/, combinedStrategy, "GET");
+
+// helpers
+function iDb() {
+  return new Promise((resolve, reject) => {
+    let idb = indexedDB.open("offline-memes");
+
+    idb.onsuccess = e => resolve(e.target.result);
+
+    idb.onupgradeneeded = e => {
+      let db = e.target.result;
+      db.createObjectStore("memes", { keyPath: "id" });
+      resolve(db);
+    };
+
+    idb.onerror = e => reject(e);
+  });
+}
+
+function saveOfflineData(meme) {
+  iDb().then(db => {
+    let tx = db.transaction("memes", "readwrite");
+    let store = tx.objectStore("memes");
+
+    store.put(meme);
+  });
+}
+
+function getOfflineData() {
+  return new Promise(resolve => {
+    iDb().then(db => {
+      let memes = [];
+      db
+        .transaction("memes", "readwrite")
+        .objectStore("memes")
+        .openCursor().onsuccess = function(event) {
+        let cursor = event.target.result;
+        if (cursor) {
+          memes.push({ ...cursor.value, offline: true });
+          cursor.continue();
+        } else {
+          resolve(memes);
+        }
+      };
+    });
+  });
+}
+
+function unroll(data, suffix) {
+  if (!data.length) {
+    return "";
+  }
+
+  let result = data.map(item => JSON.stringify(item)).join(",");
+
+  if (suffix) {
+    result += suffix;
+  }
+
+  return result;
+}
+
+function clearStore() {
+  iDb().then(db => {
+    db.transaction("memes", "readwrite")
+      .objectStore("memes")
+      .clear();
+  });
+}
+
+async function clearCache() {
+  let cache = await caches.open("meme-data");
+  let keys = await cache.keys();
+
+  for (let key of keys) {
+    if (/.*memes\/.\w+/.test(key.url)) {
+      cache.delete(key);
+    }
+  }
+}
