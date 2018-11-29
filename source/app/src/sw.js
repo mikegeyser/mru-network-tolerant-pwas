@@ -49,10 +49,7 @@ workbox.routing.setCatchHandler(({ event }) => {
 // Background Sync
 const queue = new workbox.backgroundSync.Queue('memes-to-be-saved', {
   callbacks: {
-    queueDidReplay: () => {
-      clearStore();
-      clearCache();
-    }
+    queueDidReplay: () => clear()
   }
 });
 
@@ -70,7 +67,10 @@ async function queueChange(request) {
   await queue.addRequest(request.clone());
 
   const meme = await request.clone().json();
-  saveOfflineData(meme);
+  meme.offline = true;
+
+  let memes = (await idbKeyval.get('memes')) || [];
+  idbKeyval.set('memes', [...memes, meme]);
 
   return new Response('', { status: 200 });
 }
@@ -88,15 +88,17 @@ const apiStrategy = async ({ event }) => {
       bottom: 'not found',
       template: 'notfound.jpg'
     };
-    const fakeResponse = new Response(JSON.stringify([fake]), { status: 200 });
-    return Promise.resolve(fakeResponse);
+    return new Response(JSON.stringify([fake]));
+
+    // const fakeResponse = new Response(JSON.stringify([fake]), { status: 200 });
+    // return Promise.resolve(fakeResponse);
   }
 };
 
-const combinedStrategy = workbox.streams.strategy([
+const streamStrategy = workbox.streams.strategy([
   () => '[',
   async () => {
-    const data = await getOfflineData();
+    const data = await idbKeyval.get('memes');
     return stringify(data, ',');
   },
   async e => {
@@ -107,24 +109,14 @@ const combinedStrategy = workbox.streams.strategy([
   () => ']'
 ]);
 
-workbox.routing.registerRoute(/.*memes\/.\w+/, combinedStrategy, 'GET');
+workbox.routing.registerRoute(/.*memes\/.\w+/, streamStrategy, 'GET');
 
 // helpers.js
-async function saveOfflineData(meme) {
-  meme.offline = true;
-  let memes = (await idbKeyval.get('memes')) || [];
-  idbKeyval.set('memes', [...memes, meme]);
-}
+async function clear() {
+  // Clear store
+  await idbKeyval.del('memes');
 
-function getOfflineData() {
-  return idbKeyval.get('memes');
-}
-
-function clearStore() {
-  return idbKeyval.del('memes');
-}
-
-async function clearCache() {
+  // Clear cache
   let cache = await caches.open('meme-data');
   let keys = await cache.keys();
 
