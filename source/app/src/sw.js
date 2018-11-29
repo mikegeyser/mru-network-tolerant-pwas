@@ -1,7 +1,7 @@
 /* In case the conference wifi sucks :) */
-importScripts("workbox-v3.6.3/workbox-sw.js", "idb/idb-keyval-iife.min.js");
+importScripts('workbox-v3.6.3/workbox-sw.js', 'idb/idb-keyval-iife.min.js');
 
-workbox.setConfig({ modulePathPrefix: "workbox-v3.6.3/", debug: true });
+workbox.setConfig({ modulePathPrefix: 'workbox-v3.6.3/', debug: true });
 // wat
 
 // Skip waiting.
@@ -14,40 +14,40 @@ workbox.precaching.precacheAndRoute(precacheManifest);
 
 // Runtime routing
 const dataCacheConfig = {
-  cacheName: "meme-data"
+  cacheName: 'meme-data'
 };
 
 workbox.routing.registerRoute(
   /.*categories/,
   workbox.strategies.cacheFirst(dataCacheConfig),
-  "GET"
+  'GET'
 );
 workbox.routing.registerRoute(
   /.*templates/,
   workbox.strategies.cacheFirst(dataCacheConfig),
-  "GET"
+  'GET'
 );
 
 workbox.routing.registerRoute(
   /.*.(?:png|jpg|jpeg|svg)$/,
   workbox.strategies.cacheFirst({
-    cacheName: "meme-images"
+    cacheName: 'meme-images'
   }),
-  "GET"
+  'GET'
 );
 
 // Exception handling
 workbox.routing.setCatchHandler(({ event }) => {
   switch (event.request.destination) {
-    case "image":
-      return caches.match("/images/facepalm.jpg");
+    case 'image':
+      return caches.match('/images/facepalm.jpg');
     default:
       return Response.error();
   }
 });
 
 // Background Sync
-const queue = new workbox.backgroundSync.Queue("memes-to-be-saved", {
+const queue = new workbox.backgroundSync.Queue('memes-to-be-saved', {
   callbacks: {
     queueDidReplay: () => {
       clearStore();
@@ -56,8 +56,8 @@ const queue = new workbox.backgroundSync.Queue("memes-to-be-saved", {
   }
 });
 
-self.addEventListener("fetch", event => {
-  if (event.request.url.match(/.*memes/) && event.request.method === "POST") {
+self.addEventListener('fetch', event => {
+  if (event.request.url.match(/.*memes/) && event.request.method === 'POST') {
     let response = fetch(event.request.clone()).catch(() =>
       queueChange(event.request.clone())
     );
@@ -72,7 +72,7 @@ async function queueChange(request) {
   const meme = await request.clone().json();
   saveOfflineData(meme);
 
-  return new Response("", { status: 200 });
+  return new Response('', { status: 200 });
 }
 
 // Offline streams
@@ -84,9 +84,9 @@ const apiStrategy = async ({ event }) => {
   } catch (error) {
     const fake = {
       id: 0,
-      top: "memes",
-      bottom: "not found",
-      template: "notfound.jpg"
+      top: 'memes',
+      bottom: 'not found',
+      template: 'notfound.jpg'
     };
     const fakeResponse = new Response(JSON.stringify([fake]), { status: 200 });
     return Promise.resolve(fakeResponse);
@@ -94,38 +94,38 @@ const apiStrategy = async ({ event }) => {
 };
 
 const combinedStrategy = workbox.streams.strategy([
-  () => "[",
+  () => '[',
   async () => {
     const data = await getOfflineData();
-    return stringify(data, ",");
+    return stringify(data, ',');
   },
   async e => {
     const response = await apiStrategy(e);
     const data = await response.json();
     return stringify(data);
   },
-  () => "]"
+  () => ']'
 ]);
 
-workbox.routing.registerRoute(/.*memes\/.\w+/, combinedStrategy, "GET");
+workbox.routing.registerRoute(/.*memes\/.\w+/, combinedStrategy, 'GET');
 
 // helpers.js
 async function saveOfflineData(meme) {
   meme.offline = true;
-  let memes = (await idbKeyval.get("memes")) || [];
-  idbKeyval.set("memes", [...memes, meme]);
+  let memes = (await idbKeyval.get('memes')) || [];
+  idbKeyval.set('memes', [...memes, meme]);
 }
 
 function getOfflineData() {
-  return idbKeyval.get("memes");
+  return idbKeyval.get('memes');
 }
 
 function clearStore() {
-  return idbKeyval.del("memes");
+  return idbKeyval.del('memes');
 }
 
 async function clearCache() {
-  let cache = await caches.open("meme-data");
+  let cache = await caches.open('meme-data');
   let keys = await cache.keys();
 
   for (let key of keys) {
@@ -137,10 +137,10 @@ async function clearCache() {
 
 function stringify(data, suffix) {
   if (!data || !data.length) {
-    return "";
+    return '';
   }
 
-  let result = data.map(item => JSON.stringify(item)).join(",");
+  let result = data.map(item => JSON.stringify(item)).join(',');
 
   if (suffix) {
     result += suffix;

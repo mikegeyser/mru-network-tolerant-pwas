@@ -1,5 +1,5 @@
-import React from "react";
-import "./Toast.css";
+import React from 'react';
+import './Toast.css';
 
 class Toast extends React.Component {
   render() {

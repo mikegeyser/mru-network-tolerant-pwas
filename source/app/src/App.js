@@ -1,12 +1,12 @@
-import React, { Component } from "react";
-import * as api from "./Api";
+import React, { Component } from 'react';
+import * as api from './Api';
 
-import "./App.css";
+import './App.css';
 
-import Selector from "./components/selector/Selector";
-import List from "./components/list/List";
-import New from "./components/new/New";
-import Toast from "./components/toast/Toast";
+import Selector from './components/selector/Selector';
+import List from './components/list/List';
+import New from './components/new/New';
+import Toast from './components/toast/Toast';
 
 class App extends Component {
   state = {
@@ -21,8 +21,8 @@ class App extends Component {
   componentDidMount() {
     this.fetchCategories();
 
-    window.addEventListener("online", () => this.online(true));
-    window.addEventListener("offline", () => this.online(false));
+    window.addEventListener('online', () => this.online(true));
+    window.addEventListener('offline', () => this.online(false));
   }
 
   online(online) {
@@ -32,10 +32,10 @@ class App extends Component {
     }
 
     const message = online
-      ? "Yay, the application is online!"
-      : "Oh no, the app seems to be offline... ";
+      ? 'Yay, the application is online!'
+      : 'Oh no, the app seems to be offline... ';
 
-    this.setState({ toastMessage: message, showToast: "show" });
+    this.setState({ toastMessage: message, showToast: 'show' });
   }
 
   fetchCategories() {
