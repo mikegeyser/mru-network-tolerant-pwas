@@ -1,0 +1,232 @@
+{
+  "Offline event": {
+    "prefix": "_1",
+    "body": [
+      "window.addEventListener('online', () => this.online(true));",
+      "window.addEventListener('offline', () => this.online(false));"
+    ],
+    "description": "Offline event"
+  },
+  "Handle online event": {
+    "prefix": "_2",
+    "body": [
+      "online(online) {",
+      "  const showToast = online !== this.state.online;",
+      "  if (showToast) {",
+      "    setTimeout(() => this.setState({ showToast: null }), 2000);",
+      "  }",
+      "",
+      "  const message = online",
+      "    ? 'Yay, the application is online!'",
+      "    : 'Oh no, the app seems to be offline... ';",
+      "",
+      "  this.setState({online, toastMessage: message, showToast: 'show' });",
+      "}"
+    ],
+    "description": "Handle online event"
+  },
+  "Toast message": {
+    "prefix": "_3",
+    "body": [
+      "<Toast message={this.state.toastMessage} show={this.state.showToast} />"
+    ],
+    "description": "Toast message"
+  },
+  "Precache manifest": {
+    "prefix": "_4",
+    "body": [
+      "const precacheManifest = [];",
+      "",
+      "workbox.precaching.precacheAndRoute(precacheManifest);"
+    ],
+    "description": "Precache manifest"
+  },
+  "Runtime route caching": {
+    "prefix": "_5",
+    "body": [
+      "const dataCacheConfig = {",
+      "  cacheName: 'meme-data'",
+      "};",
+      "",
+      "workbox.routing.registerRoute(/.*categories/, workbox.strategies.cacheFirst(dataCacheConfig), 'GET');",
+      "workbox.routing.registerRoute(/.*templates/, workbox.strategies.cacheFirst(dataCacheConfig), 'GET');",
+      "workbox.routing.registerRoute(/.*memes\\/.\\w+/, workbox.strategies.staleWhileRevalidate(dataCacheConfig), 'GET');",
+      "workbox.routing.registerRoute(/.*.(?:png|jpg|jpeg|svg)$/, workbox.strategies.cacheFirst({cacheName: 'meme-images'}), 'GET');"
+    ],
+    "description": "Runtime route caching"
+  },
+  "Custom strategy": {
+    "prefix": "_6",
+    "body": [
+      "const apiStrategy = async ({ event }) => {",
+      "  try {",
+      "    ",
+      "  } catch (error) {",
+      "    ",
+      "  }",
+      "};"
+    ],
+    "description": "Custom strategy"
+  },
+  "Try staleWhileRevalidate": {
+    "prefix": "_7",
+    "body": [
+      "return await workbox.strategies.staleWhileRevalidate(dataCacheConfig).handle({ event });"
+    ],
+    "description": "Try staleWhileRevalidate"
+  },
+  "Catch and fake": {
+    "prefix": "_8",
+    "body": [
+      "const fake = {",
+      "    id: 0,",
+      "    top: 'memes',",
+      "    bottom: 'not found',",
+      "    template: 'notfound.jpg'",
+      "};",
+      "return new Response(JSON.stringify([fake]));"
+    ],
+    "description": "Catch and fake"
+  },
+  "Global image handling": {
+    "prefix": "_9",
+    "body": [
+      "workbox.routing.setCatchHandler(({ event }) => {",
+      "  switch (event.request.destination) {",
+      "    case 'image':",
+      "      return caches.match('/images/facepalm.jpg');",
+      "    default:",
+      "      return Response.error();",
+      "  }",
+      "});"
+    ],
+    "description": "Global image handling"
+  },
+  "Background sync queue": {
+    "prefix": "_10",
+    "body": [
+      "const queue = new workbox.backgroundSync.Queue('memes-to-be-saved');"
+    ],
+    "description": "Background sync queue"
+  },
+  "Listen to the fetch event": {
+    "prefix": "_11",
+    "body": [
+      "self.addEventListener('fetch', event => {",
+      "  if (event.request.url.match(/.*memes/) && event.request.method === 'POST') {",
+      "    let response = fetch(event.request.clone()).catch(() =>",
+      "      queueChange(event.request.clone())",
+      "    );",
+      "",
+      "    event.respondWith(response);",
+      "  }",
+      "});"
+    ],
+    "description": "Listen to the fetch event"
+  },
+  "Queue change": {
+    "prefix": "_12",
+    "body": [
+      "async function queueChange(request) {",
+      "  await queue.addRequest(request.clone());",
+      "",
+      "  return new Response('', { status: 200 });",
+      "}"
+    ],
+    "description": "Queue change"
+  },
+  "Save a copy of the memes": {
+    "prefix": "_13",
+    "body": [
+      "const meme = await request.clone().json();",
+      "meme.offline = true;",
+      "",
+      "let memes = (await idbKeyval.get('memes')) || [];",
+      "idbKeyval.set('memes', [...memes, meme]);"
+    ],
+    "description": "Save a copy of the memes"
+  },
+  "Create the stream strategy": {
+    "prefix": "_14",
+    "body": [
+      "const streamStrategy = workbox.streams.strategy([",
+      "  () => '[',",
+      "  async () => { ",
+      "    /* Return the copied memes */",
+      "  },",
+      "  async e => {",
+      "    /* Return the cached memes */",
+      "  },",
+      "  () => ']'",
+      "]);"
+    ],
+    "description": "Create the stream strategy"
+  },
+  "Stream the copied memes": {
+    "prefix": "_15",
+    "body": [
+      "const data = await idbKeyval.get('memes');",
+      "return stringify(data, ',');"
+    ],
+    "description": "Stream the copied memes"
+  },
+  "Stream the cached memes": {
+    "prefix": "_16",
+    "body": [
+      "const response = await apiStrategy(e);",
+      "const data = await response.json();",
+      "return stringify(data);"
+    ],
+    "description": "Stream the cached memes"
+  },
+  "Stringify": {
+    "prefix": "_17",
+    "body": [
+      "function stringify(data, suffix) {",
+      "  if (!data || !data.length) {",
+      "    return '';",
+      "  }",
+      "",
+      "  let result = data.map(item => JSON.stringify(item)).join(',');",
+      "",
+      "  if (suffix) {",
+      "    result += suffix;",
+      "  }",
+      "",
+      "  return result;",
+      "}"
+    ],
+    "description": "Stringify"
+  },
+  "Queue replayed callback": {
+    "prefix": "_18",
+    "body": [
+      "{",
+      "  callbacks: {",
+      "    queueDidReplay: () => clear()",
+      "  }",
+      "}"
+    ],
+    "description": "Queue replayed callback"
+  },
+  "Clear": {
+    "prefix": "_19",
+    "body": [
+      "async function clear() {",
+      "  // Clear store",
+      "  await idbKeyval.del('memes');",
+      "",
+      "  // Clear cache",
+      "  let cache = await caches.open('meme-data');",
+      "  let keys = await cache.keys();",
+      "",
+      "  for (let key of keys) {",
+      "    if (/.*memes\\/.\\w+/.test(key.url)) {",
+      "      cache.delete(key);",
+      "    }",
+      "  }",
+      "}"
+    ],
+    "description": "Clear"
+  }
+}
