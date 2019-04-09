@@ -1,7 +1,7 @@
 // Importing dependencies from local, in case the conference wifi sucks.
-importScripts('workbox-v3.6.3/workbox-sw.js', 'idb/idb-keyval-iife.min.js');
+importScripts('workbox-v4.2.0/workbox-sw.js', 'idb/idb-keyval-iife.min.js');
 
-workbox.setConfig({ modulePathPrefix: 'workbox-v3.6.3/', debug: true });
+workbox.setConfig({ modulePathPrefix: 'workbox-v4.2.0/', debug: true });
 
 // 0. Force skip waiting... ¯\_(ツ)_/¯
 self.skipWaiting();
