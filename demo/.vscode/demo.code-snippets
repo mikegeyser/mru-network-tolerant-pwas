@@ -44,14 +44,16 @@
   "Runtime route caching": {
     "prefix": "_5",
     "body": [
-      "const dataCacheConfig = {",
+      "const config = {",
       "  cacheName: 'meme-data'",
       "};",
+      "const cacheFirst = new workbox.strategies.CacheFirst(config);",
+      "const staleWhileRevalidate = new workbox.strategies.StaleWhileRevalidate(config);",
       "",
-      "workbox.routing.registerRoute(/.*categories/, workbox.strategies.cacheFirst(dataCacheConfig), 'GET');",
-      "workbox.routing.registerRoute(/.*templates/, workbox.strategies.cacheFirst(dataCacheConfig), 'GET');",
-      "workbox.routing.registerRoute(/.*memes\\/.\\w+/, workbox.strategies.staleWhileRevalidate(dataCacheConfig), 'GET');",
-      "workbox.routing.registerRoute(/.*.(?:png|jpg|jpeg|svg)$/, workbox.strategies.cacheFirst({cacheName: 'meme-images'}), 'GET');"
+      "workbox.routing.registerRoute(/.*categories/, cacheFirst, 'GET');",
+      "workbox.routing.registerRoute(/.*templates/, cacheFirst, 'GET');",
+      "workbox.routing.registerRoute(/.*memes\\/.\\w+/, staleWhileRevalidate, 'GET');",
+      "workbox.routing.registerRoute(/.*.(?:png|jpg|jpeg|svg)$/, new workbox.strategies.CacheFirst({cacheName: 'meme-images'}), 'GET');"
     ],
     "description": "Runtime route caching"
   },
@@ -71,7 +73,7 @@
   "Try staleWhileRevalidate": {
     "prefix": "_7",
     "body": [
-      "return await workbox.strategies.staleWhileRevalidate(dataCacheConfig).handle({ event });"
+      "return await staleWhileRevalidate.handle({ event });"
     ],
     "description": "Try staleWhileRevalidate"
   },
@@ -94,7 +96,8 @@
       "workbox.routing.setCatchHandler(({ event }) => {",
       "  switch (event.request.destination) {",
       "    case 'image':",
-      "      return caches.match('/images/facepalm.jpg');",
+      "      const key = workbox.precaching.getCacheKeyForURL('/images/facepalm.jpg');",
+      "      return caches.match(key);",
       "    default:",
       "      return Response.error();",
       "  }",
@@ -128,7 +131,7 @@
     "prefix": "_12",
     "body": [
       "async function queueChange(request) {",
-      "  await queue.addRequest(request.clone());",
+      "  await queue.pushRequest({ request });",
       "",
       "  return new Response('', { status: 200 });",
       "}"
@@ -202,10 +205,11 @@
     "prefix": "_18",
     "body": [
       "{",
-      "  callbacks: {",
-      "    queueDidReplay: () => clear()",
+      "  onSync: async (e) => {",
+      "    await queue.replayRequests();",
+      "    clear();",
       "  }",
-      "}"
+      "}",
     ],
     "description": "Queue replayed callback"
   },
@@ -228,5 +232,15 @@
       "}"
     ],
     "description": "Clear"
+  },
+  "Profit": {
+    "prefix": "_20",
+    "body": [
+      "/*",
+      " * ????????",
+      " * PROFIT!",
+      " */"
+    ],
+    "description": "Profit"
   }
 }
